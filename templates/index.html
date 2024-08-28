@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배차 및 미배차 조회</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            display: flex;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #0056b3;
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            margin-top: 0;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin: 15px 0;
+        }
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .sidebar ul li a:hover {
+            text-decoration: underline;
+        }
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            background-color: #f0f8ff;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"], input[type="date"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #003d80;
+        }
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .result-table th, .result-table td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        .result-table th {
+            background-color: #e0f0ff;
+        }
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>메뉴</h2>
+        <ul>
+            <li><a href="#" onclick="showView('summary')">배차/미배차 건수</a></li>
+            <li><a href="#" onclick="showView('car-type')">차량 종류 조회</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+        <div id="summary" class="view">
+            <div class="container">
+                <h1>종합 건수 조회</h1>
+                <div class="form-group">
+                    <label for="type-summary">상태:</label>
+                    <select id="type-summary">
+                        <option value="nondispatched">미배차</option>
+                        <option value="dispatched">배차</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="car-number-summary">차량번호 :</label>
+                    <input type="text" id="car-number-summary" required>
+                </div>
+                <div class="form-group">
+                    <label for="date-summary">날짜 :</label>
+                    <input type="date" id="date-summary" required>
+                </div>
+                <button onclick="showResults()">조회</button>
+                <table class="result-table" id="result-table-summary" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>시간</th>
+                            <th>미배차 건수</th>
+                            <th>배차 건수</th>
+                        </tr>
+                    </thead>
+                    <tbody><!-- 결과가 이곳에 표시됩니다. --></tbody>
+                </table>
+            </div>
+        </div>
+        <div id="car-type" class="view">
+            <div class="container">
+                <h1>차량 종류 조회</h1>
+                <div class="form-group">
+                    <label for="car-type-select">차량 타입:</label>
+                    <select id="car-type-select">
+                        <option value="evcar">evcar</option>
+                        <option value="bigtuktuk">빅뚝뚝</option>
+                        <option value="sedan">sedan</option>
+                        <option value="small tuktuk">스몰뚝뚝</option>
+                        <option value="suv">suv</option>
+                        <!-- Add other options as necessary -->
+                    </select>
+                </div>
+                <button onclick="showCarTypeResults()">조회</button>
+                <table class="result-table" id="result-table-car-type" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>차량 타입</th>
+                            <th>수량</th>
+                        </tr>
+                    </thead>
+                    <tbody><!-- 결과가 이곳에 표시됩니다. --></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        async function showResults() {
+            const type = document.getElementById('type-summary').value;
+            const vehicleNumber = document.getElementById('car-number-summary').value;
+            const dateSelect = document.getElementById('date-summary').value;
+            const resultTable = document.getElementById('result-table-summary');
+            const tbody = resultTable.querySelector('tbody');
+            tbody.innerHTML = ''; // 기존 결과 삭제
+
+            try {
+                const response = await fetch('/filter_bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vehicle_number: vehicleNumber, date_select: dateSelect, booking_status: type })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    data.time_based_results.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${row.시간}</td>
+                            <td>${type === 'nondispatched' ? row['시간대별 미배차 건'] : ''}</td>
+                            <td>${type === 'dispatched' ? row['시간대별 미배차 건'] : ''}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    resultTable.style.display = 'table'; // 결과 테이블 표시
+                } else {
+                    alert(data.error || '데이터를 가져오는 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('데이터를 가져오는 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function showCarTypeResults() {
+            const type = document.getElementById('car-type-select').value;
+            const resultTable = document.getElementById('result-table-car-type');
+            const tbody = resultTable.querySelector('tbody');
+            tbody.innerHTML = ''; // 기존 결과 삭제
+
+            try {
+                const response = await fetch(`/vehicles?type=${type}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    Object.entries(data).forEach(([carType, count]) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${carType}</td>
+                            <td>${count}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    resultTable.style.display = 'table'; // 결과 테이블 표시
+                } else {
+                    alert('데이터를 가져오는 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('데이터를 가져오는 중 오류가 발생했습니다.');
+            }
+        }
+
+        // Initialize with the summary view visible
+        showView('summary');
+    </script>
+</body>
+</html>
